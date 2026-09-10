@@ -1,0 +1,105 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Lista 2026</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Dashboard Lista 2026</h1>
+            <p class="subtitle">Progreso de Entregas y Puntos Extra</p>
+        </header>
+
+        <section class="config-section">
+            <h2>Configuracion de API</h2>
+            <div class="config-form">
+                <label for="spreadsheetId">Spreadsheet ID:</label>
+                <input type="text" id="spreadsheetId" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
+                <label for="apiUrl">URL de Google Apps Script:</label>
+                <input type="text" id="apiUrl" placeholder="https://script.google.com/macros/s/TU_SCRIPT_ID/exec">
+                <button id="loadData" class="btn-primary">Cargar Datos</button>
+            </div>
+        </section>
+
+        <section class="filters-section">
+            <h2>Filtros</h2>
+            <div class="filters">
+                <label for="groupFilter">Grupo:</label>
+                <select id="groupFilter">
+                    <option value="all">Todos</option>
+                    <option value="1E">1E</option>
+                    <option value="1B">1B</option>
+                </select>
+                <button id="applyFilters" class="btn-secondary">Aplicar</button>
+            </div>
+        </section>
+
+        <section class="stats-section">
+            <h2>Estadisticas Generales</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Estudiantes</h3>
+                    <p id="totalStudents">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Juegos Entregados</h3>
+                    <p id="gamesDelivered">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Juegos Pendientes</h3>
+                    <p id="gamesPending">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Puntos Extra Promedio</h3>
+                    <p id="avgExtraPoints">0</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="charts-section">
+            <h2>Progreso de Juegos</h2>
+            <div class="charts-container">
+                <div class="chart-wrapper">
+                    <canvas id="gamesChart"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="extraPointsChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="table-section">
+            <h2>Lista de Estudiantes</h2>
+            <div class="table-container">
+                <table id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th>Num</th>
+                            <th>Nombre</th>
+                            <th>Grupo</th>
+                            <th>Juego 1</th>
+                            <th>Juego 2</th>
+                            <th>Juego 3</th>
+                            <th>Puntos Extra</th>
+                            <th>Accion</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <footer>
+            <p>Dashboard Lista 2026 - Datos actualizados desde Google Sheets</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
