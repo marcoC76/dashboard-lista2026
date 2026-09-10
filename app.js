@@ -1,7 +1,8 @@
-﻿// Dashboard App - Logica Principal
+﻿// Dashboard App - Logica Principal con JSONP
 let studentsData = [];
 let gamesChart = null;
 let extraPointsChart = null;
+let jsonpCounter = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedApiUrl = localStorage.getItem('apiUrl');
@@ -17,6 +18,36 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('loadData').addEventListener('click', loadData);
     document.getElementById('applyFilters').addEventListener('click', applyFilters);
 });
+
+function jsonpRequest(url) {
+    return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_cb_' + (++jsonpCounter) + '_' + Date.now();
+        const script = document.createElement('script');
+        
+        window[callbackName] = function(data) {
+            delete window[callbackName];
+            script.remove();
+            resolve(data);
+        };
+        
+        script.src = url + '&callback=' + callbackName;
+        script.onerror = function() {
+            delete window[callbackName];
+            script.remove();
+            reject(new Error('Error de conexion JSONP'));
+        };
+        
+        document.head.appendChild(script);
+        
+        setTimeout(() => {
+            if (window[callbackName]) {
+                delete window[callbackName];
+                script.remove();
+                reject(new Error('Timeout JSONP'));
+            }
+        }, 15000);
+    });
+}
 
 async function loadData() {
     const apiUrl = document.getElementById('apiUrl').value.trim();
@@ -36,11 +67,8 @@ async function loadData() {
     localStorage.setItem('spreadsheetId', spreadsheetId);
     
     try {
-        const url = new URL(apiUrl);
-        url.searchParams.append('spreadsheetId', spreadsheetId);
-        
-        const response = await fetch(url);
-        const result = await response.json();
+        const url = apiUrl + '?spreadsheetId=' + encodeURIComponent(spreadsheetId);
+        const result = await jsonpRequest(url);
         
         if (result.success) {
             studentsData = result.data;
@@ -291,21 +319,16 @@ async function toggleDelivery(studentId, field) {
     const newStatus = currentStatus === '✅ Entregado' ? '' : '✅ Entregado';
     
     try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                action: 'updateDelivery',
-                spreadsheetId: spreadsheetId,
-                studentId: studentId,
-                field: field,
-                status: newStatus
-            })
+        const params = new URLSearchParams({
+            action: 'updateDelivery',
+            spreadsheetId: spreadsheetId,
+            studentId: studentId,
+            field: field,
+            status: newStatus
         });
         
-        const result = await response.json();
+        const url = apiUrl + '?' + params.toString();
+        const result = await jsonpRequest(url);
         
         if (result.success) {
             student[field] = newStatus;
