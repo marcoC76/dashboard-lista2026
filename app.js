@@ -1,30 +1,78 @@
-﻿// Dashboard App - Logica Principal con CORS Proxy
+﻿// Dashboard App - Logica Principal con JSONP
 let studentsData = [];
 let gamesChart = null;
 let extraPointsChart = null;
 
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
-
 document.addEventListener('DOMContentLoaded', () => {
     const savedApiUrl = localStorage.getItem('apiUrl');
-    if (savedApiUrl) {
-        document.getElementById('apiUrl').value = savedApiUrl;
-    }
+    if (savedApiUrl) document.getElementById('apiUrl').value = savedApiUrl;
     
     const savedSpreadsheetId = localStorage.getItem('spreadsheetId');
-    if (savedSpreadsheetId) {
-        document.getElementById('spreadsheetId').value = savedSpreadsheetId;
-    }
+    if (savedSpreadsheetId) document.getElementById('spreadsheetId').value = savedSpreadsheetId;
     
     document.getElementById('loadData').addEventListener('click', loadData);
     document.getElementById('applyFilters').addEventListener('click', applyFilters);
 });
 
-async function apiRequest(url) {
-    const proxyUrl = CORS_PROXY + encodeURIComponent(url);
-    const response = await fetch(proxyUrl);
-    if (!response.ok) throw new Error('Error HTTP: ' + response.status);
-    return await response.json();
+function jsonp(url, callbackName) {
+    return new Promise((resolve, reject) => {
+        window[callbackName] = (data) => {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            resolve(data);
+        };
+        const script = document.createElement('script');
+        script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+        script.onerror = () => {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            reject(new Error('JSONP failed'));
+        };
+        document.body.appendChild(script);
+    });
+}
+
+async function apiRequest(url, callbackName) {
+    return await jsonp(url, callbackName);
+}
+
+function toggleDelivery(studentId, field) {
+    const apiUrl = document.getElementById('apiUrl').value.trim();
+    const spreadsheetId = document.getElementById('spreadsheetId').value.trim();
+    
+    if (!apiUrl || !spreadsheetId) {
+        alert('Primero carga los datos con una URL y Spreadsheet ID validos');
+        return;
+    }
+    
+    const student = studentsData.find(s => s['ID Único'] === studentId);
+    if (!student) return;
+    
+    const currentStatus = student[field];
+    const newStatus = currentStatus === '✅ Entregado' ? '' : '✅ Entregado';
+    
+    const params = new URLSearchParams({
+        action: 'updateDelivery',
+        spreadsheetId: spreadsheetId,
+        studentId: studentId,
+        field: field,
+        status: newStatus
+    });
+    
+    const url = apiUrl + '?' + params.toString();
+    
+    apiRequest(url, 'cb_update').then(result => {
+        if (result.success) {
+            student[field] = newStatus;
+            updateStats();
+            updateCharts();
+            updateTable();
+        } else {
+            alert('Error al actualizar: ' + result.error);
+        }
+    }).catch(error => {
+        alert('Error de conexion: ' + error.message);
+    });
 }
 
 async function loadData() {
@@ -44,9 +92,10 @@ async function loadData() {
     localStorage.setItem('apiUrl', apiUrl);
     localStorage.setItem('spreadsheetId', spreadsheetId);
     
+    const url = apiUrl + '?action=getData&spreadsheetId=' + encodeURIComponent(spreadsheetId);
+    
     try {
-        const url = apiUrl + '?spreadsheetId=' + encodeURIComponent(spreadsheetId);
-        const result = await apiRequest(url);
+        const result = await apiRequest(url, 'cb_load');
         
         if (result.success) {
             studentsData = result.data;
@@ -257,7 +306,7 @@ function updateTable() {
         const extraPoints = student['⭐ Puntos Extra'] || 0;
         
         row.innerHTML = `
-            <td>${student['Numero de Lista']}</td>
+            <td>${student['Número de Lista']}</td>
             <td>${student['Nombre Completo']}</td>
             <td>${student['Grupo']}</td>
             <td>${game1Status}</td>
@@ -265,13 +314,13 @@ function updateTable() {
             <td>${game3Status}</td>
             <td>${extraPoints}</td>
             <td>
-                <button class="btn-update" onclick="toggleDelivery('${student['ID Unico']}', '🎮 Juego 1 Estado')">
+                <button class="btn-update" onclick="toggleDelivery('${student['ID Único']}', '🎮 Juego 1 Estado')">
                     Toggle J1
                 </button>
-                <button class="btn-update" onclick="toggleDelivery('${student['ID Unico']}', '🎮 Juego 2 Estado')">
+                <button class="btn-update" onclick="toggleDelivery('${student['ID Único']}', '🎮 Juego 2 Estado')">
                     Toggle J2
                 </button>
-                <button class="btn-update" onclick="toggleDelivery('${student['ID Unico']}', '🎮 Juego 3 Estado')">
+                <button class="btn-update" onclick="toggleDelivery('${student['ID Único']}', '🎮 Juego 3 Estado')">
                     Toggle J3
                 </button>
             </td>
@@ -279,44 +328,4 @@ function updateTable() {
         
         tbody.appendChild(row);
     });
-}
-
-async function toggleDelivery(studentId, field) {
-    const apiUrl = document.getElementById('apiUrl').value.trim();
-    const spreadsheetId = document.getElementById('spreadsheetId').value.trim();
-    
-    if (!apiUrl || !spreadsheetId) {
-        alert('Primero carga los datos con una URL y Spreadsheet ID validos');
-        return;
-    }
-    
-    const student = studentsData.find(s => s['ID Unico'] === studentId);
-    if (!student) return;
-    
-    const currentStatus = student[field];
-    const newStatus = currentStatus === '✅ Entregado' ? '' : '✅ Entregado';
-    
-    try {
-        const params = new URLSearchParams({
-            action: 'updateDelivery',
-            spreadsheetId: spreadsheetId,
-            studentId: studentId,
-            field: field,
-            status: newStatus
-        });
-        
-        const url = apiUrl + '?' + params.toString();
-        const result = await apiRequest(url);
-        
-        if (result.success) {
-            student[field] = newStatus;
-            updateStats();
-            updateCharts();
-            updateTable();
-        } else {
-            alert('Error al actualizar: ' + result.error);
-        }
-    } catch (error) {
-        alert('Error de conexion: ' + error.message);
-    }
 }
