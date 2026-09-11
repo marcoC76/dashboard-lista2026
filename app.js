@@ -1,8 +1,9 @@
-﻿// Dashboard App - Logica Principal con JSONP
+﻿// Dashboard App - Logica Principal con CORS Proxy
 let studentsData = [];
 let gamesChart = null;
 let extraPointsChart = null;
-let jsonpCounter = 0;
+
+const CORS_PROXY = 'https://corsproxy.io/?url=';
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedApiUrl = localStorage.getItem('apiUrl');
@@ -19,34 +20,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('applyFilters').addEventListener('click', applyFilters);
 });
 
-function jsonpRequest(url) {
-    return new Promise((resolve, reject) => {
-        const callbackName = 'jsonp_cb_' + (++jsonpCounter) + '_' + Date.now();
-        const script = document.createElement('script');
-        
-        window[callbackName] = function(data) {
-            delete window[callbackName];
-            script.remove();
-            resolve(data);
-        };
-        
-        script.src = url + '&callback=' + callbackName;
-        script.onerror = function() {
-            delete window[callbackName];
-            script.remove();
-            reject(new Error('Error de conexion JSONP'));
-        };
-        
-        document.head.appendChild(script);
-        
-        setTimeout(() => {
-            if (window[callbackName]) {
-                delete window[callbackName];
-                script.remove();
-                reject(new Error('Timeout JSONP'));
-            }
-        }, 15000);
-    });
+async function apiRequest(url) {
+    const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+    const response = await fetch(proxyUrl);
+    if (!response.ok) throw new Error('Error HTTP: ' + response.status);
+    return await response.json();
 }
 
 async function loadData() {
@@ -68,7 +46,7 @@ async function loadData() {
     
     try {
         const url = apiUrl + '?spreadsheetId=' + encodeURIComponent(spreadsheetId);
-        const result = await jsonpRequest(url);
+        const result = await apiRequest(url);
         
         if (result.success) {
             studentsData = result.data;
@@ -328,7 +306,7 @@ async function toggleDelivery(studentId, field) {
         });
         
         const url = apiUrl + '?' + params.toString();
-        const result = await jsonpRequest(url);
+        const result = await apiRequest(url);
         
         if (result.success) {
             student[field] = newStatus;
