@@ -3,7 +3,7 @@ let studentsData = [];
 let gamesChart = null;
 let extraPointsChart = null;
 
-const CORS_PROXY = 'https://corsproxy.io/?url=';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedApiUrl = localStorage.getItem('apiUrl');
